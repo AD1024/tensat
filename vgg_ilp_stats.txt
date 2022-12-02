@@ -1,0 +1,1 @@
+{"classes":308,"extraction":10025.000000,"iter":4,"nodes":504,"optimized":3.329181432723999,"original":3.3348805904388428,"programs":124.77442169189453,"saturation":0.5190844535827637}
