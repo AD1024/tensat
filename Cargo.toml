@@ -14,11 +14,13 @@ rand = "0.7"
 clap = "2.33"
 itertools = "0.9"
 arrayvec = "0.5.1"
+hashbrown = "0.12.1"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 
 [dependencies.egg]
 path = "../egg"
+features = ["lp"]
 
 #git = "https://github.com/mwillsey/egg"
 #rev = "986bff5c7d2e050e9aa980671c4c7d971c07da6f"

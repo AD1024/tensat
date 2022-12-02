@@ -187,6 +187,8 @@ impl Applier<Mdl, TensorAnalysis> for CheckApply {
         egraph: &mut EGraph<Mdl, TensorAnalysis>,
         matched_id: Id,
         subst: &Subst,
+        searcher_ast: Option<&PatternAst<Mdl>>,
+        rule_name: egg::Symbol,
     ) -> Vec<Id> {
         if self.filter_after {
             // Check if any node in matched source graph is in blacklist. If so, stop applying
@@ -202,7 +204,7 @@ impl Applier<Mdl, TensorAnalysis> for CheckApply {
             /*get_exist_nodes=*/ self.filter_after,
         );
         if valid {
-            let result = self.pat.apply_one(egraph, matched_id, subst);
+            let result = self.pat.apply_one(egraph, matched_id, subst, searcher_ast, rule_name);
 
             // Add the newly added nodes to the ordering vector
             if self.filter_after {
@@ -969,7 +971,7 @@ impl MultiPatterns {
             let mut num_applied = 0;
 
             // Construct Vec to store matches for each canonicalized pattern
-            let matches: Vec<Vec<SearchMatches>> = self
+            let matches: Vec<Vec<SearchMatches<Mdl>>> = self
                 .canonical_src_pat
                 .iter()
                 .map(|x| x.search(&runner.egraph))
@@ -1065,8 +1067,8 @@ impl MultiPatterns {
     fn apply_match_pair(
         &self,
         rule: &(Pattern<Mdl>, Pattern<Mdl>, Pattern<Mdl>, Pattern<Mdl>, bool),
-        match_1: &SearchMatches,
-        match_2: &SearchMatches,
+        match_1: &SearchMatches<Mdl>,
+        match_2: &SearchMatches<Mdl>,
         map_1: &MapToCanonical,
         map_2: &MapToCanonical,
         runner: &mut Runner<Mdl, TensorAnalysis, ()>,
@@ -1144,12 +1146,12 @@ impl MultiPatterns {
                             // apply dst patterns, union
                             let id_1 =
                                 rule.2
-                                    .apply_one(&mut runner.egraph, match_1.eclass, &merged_subst)
+                                    .apply_one(&mut runner.egraph, match_1.eclass, &merged_subst, None, "".into())
                                     [0];
 
                             let id_2 =
                                 rule.3
-                                    .apply_one(&mut runner.egraph, match_2.eclass, &merged_subst)
+                                    .apply_one(&mut runner.egraph, match_2.eclass, &merged_subst, None, "".into())
                                     [0];
 
                             // Add the newly added nodes to the ordering list

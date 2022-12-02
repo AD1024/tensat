@@ -5,12 +5,19 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::convert::TryInto;
+use std::hash::BuildHasher;
 use std::time::{Duration, Instant};
 
 /// Wrapper class for egg's cost function
 pub struct TensorCost<'a> {
     pub egraph: &'a EGraph<Mdl, TensorAnalysis>,
     pub cost_model: &'a CostModel,
+}
+
+impl LpCostFunction<Mdl, TensorAnalysis> for TensorCost<'_> {
+    fn node_cost(&mut self, _egraph: &EGraph<Mdl, TensorAnalysis>, eclass: Id, enode: &Mdl) -> f64 {
+        self.cost_model.get_self_cost(self.egraph, enode).into()
+    }
 }
 
 impl CostFunction<Mdl> for TensorCost<'_> {
@@ -767,10 +774,10 @@ pub fn construct_best_rec(
 ///
 /// - `i_list`: list of i picked by greedy extraction
 /// - `m_list`: list of eclass index m that i_list belongs to
-pub fn get_init_solution(
+pub fn get_init_solution<T: BuildHasher>(
     egraph: &EGraph<Mdl, TensorAnalysis>,
     root: Id,
-    costs: &HashMap<Id, (f32, Mdl)>,
+    costs: &hashbrown::HashMap<Id, (f32, Mdl), T>,
     g_i: &[usize],
     nodes_to_i: &HashMap<Mdl, usize>,
 ) -> (Vec<usize>, Vec<usize>) {
@@ -798,11 +805,11 @@ pub fn get_init_solution(
 /// - `costs`: Map from eclass ID to the node with the lowest subtree cost (cost, node).
 ///         Constructed by egg's Extractor
 /// - `nodes`: List of nodes picked by greedy extraction. Constructed within this function
-fn get_init_rec(
+fn get_init_rec<T: BuildHasher>(
     egraph: &EGraph<Mdl, TensorAnalysis>,
     eclass: Id,
     added_memo: &mut HashSet<Id>,
-    costs: &HashMap<Id, (f32, Mdl)>,
+    costs: &hashbrown::HashMap<Id, (f32, Mdl), T>,
     nodes: &mut Vec<Mdl>,
 ) {
     let id = egraph.find(eclass);

@@ -392,13 +392,14 @@ fn optimize(matches: clap::ArgMatches) {
         );
         let (best, ext_secs) = match extract_mode {
             "ilp" => extract_by_ilp(&egraph, root, &matches, &cost_model),
+            "lp" => fractional_extract(&egraph, root, &cost_model),
             "greedy" => {
                 let tnsr_cost = TensorCost {
                     egraph: &egraph,
                     cost_model: &cost_model,
                 };
                 let start_time = Instant::now();
-                let mut extractor = Extractor::new(&egraph, tnsr_cost);
+                let extractor = Extractor::new(&egraph, tnsr_cost);
                 let (best_cost, best) = extractor.find_best(root);
                 let duration = start_time.elapsed();
 
@@ -463,6 +464,20 @@ fn optimize(matches: clap::ArgMatches) {
             }
         }
     }
+}
+
+fn fractional_extract(egraph: &EGraph<Mdl, TensorAnalysis>, root: Id, cost_model: &CostModel) -> (RecExpr<Mdl>, f32) {
+    let tensor_cost = TensorCost {
+        egraph,
+        cost_model
+    };
+    let mut lp_extractor = LpExtractor::new(egraph, tensor_cost, true);
+    let start_time = Instant::now();
+    let best = lp_extractor.solve(root);
+    let solve_time = start_time.elapsed().as_millis();
+    // println!("{:?}", best);
+    println!("Solve time: {}", solve_time);
+    (best, solve_time as f32)
 }
 
 /// Extract the optimal graph from EGraph by ILP
@@ -562,8 +577,8 @@ fn extract_by_ilp(
                 let eclass_id = m_id_map[g_i[i]];
                 if node_picked.contains_key(&eclass_id) {
                     println!("Duplicate node in eclass");
-                    println!("{}", node_picked.get(&eclass_id).unwrap().display_op());
-                    println!("{}", i_to_nodes[i].display_op());
+                    println!("{}", node_picked.get(&eclass_id).unwrap().to_string());
+                    println!("{}", i_to_nodes[i].to_string());
                     continue;
                 }
                 //assert!(!node_picked.contains_key(&eclass_id));

@@ -138,12 +138,12 @@ impl Analysis<Mdl> for TensorAnalysis {
     type Data = ValTnsr;
 
     /// Merges two metadata when two eclasses are merged.
-    fn merge(&self, to: &mut Self::Data, from: Self::Data) -> bool {
+    fn merge(&mut self, to: &mut Self::Data, from: Self::Data) -> DidMerge {
         if from.all_weights && (!to.all_weights) {
             to.all_weights = from.all_weights;
-            true
+            DidMerge(true, true)
         } else {
-            false
+            DidMerge(false, false)
         }
     }
 
