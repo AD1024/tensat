@@ -150,7 +150,7 @@ version = "0.29.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe6837df1d5cba2397b835c8530f51723267e16abbf83892e9e5af4f0e5dd10a"
 dependencies = [
- "glob",
+ "glob 0.3.0",
  "libc",
  "libloading",
 ]
@@ -210,6 +210,7 @@ dependencies = [
  "instant",
  "log",
  "rand 0.8.5",
+ "rplex",
  "smallvec",
  "symbol_table",
  "symbolic_expressions",
@@ -289,6 +290,12 @@ dependencies = [
  "libc",
  "wasi 0.11.0+wasi-snapshot-preview1",
 ]
+
+[[package]]
+name = "glob"
+version = "0.2.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8be18de09a56b60ed0edf84bc9df007e30040691af7acd1c41874faac5895bfb"
 
 [[package]]
 name = "glob"
@@ -603,6 +610,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "26412eb97c6b088a6997e05f69403a802a92d520de2f8e63c2b65f9e0f47c4e8"
 
 [[package]]
+name = "rplex"
+version = "0.2.3"
+source = "git+https://github.com/gussmith23/rplex.git#81a6bb4f2fd020ce9a719c5399e2e92b5a11ea14"
+dependencies = [
+ "glob 0.2.11",
+ "libc",
+]
+
+[[package]]
 name = "rustc-hash"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -716,6 +732,7 @@ dependencies = [
  "pest",
  "pest_derive",
  "rand 0.7.3",
+ "rplex",
  "serde",
  "serde_json",
 ]

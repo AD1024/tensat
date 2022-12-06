@@ -204,7 +204,9 @@ impl Applier<Mdl, TensorAnalysis> for CheckApply {
             /*get_exist_nodes=*/ self.filter_after,
         );
         if valid {
-            let result = self.pat.apply_one(egraph, matched_id, subst, searcher_ast, rule_name);
+            let result = self
+                .pat
+                .apply_one(egraph, matched_id, subst, searcher_ast, rule_name);
 
             // Add the newly added nodes to the ordering vector
             if self.filter_after {
@@ -999,7 +1001,8 @@ impl MultiPatterns {
                                 // We don't want to apply multi-pattern rules on the same eclass
                                 continue;
                             }
-                            let n_applied = self.apply_match_pair(rule, match_1, match_2, map_1, map_2, runner);
+                            let n_applied =
+                                self.apply_match_pair(rule, match_1, match_2, map_1, map_2, runner);
                             //num_applied += n_applied;
                             //let num_nodes = runner.egraph.analysis.newly_added.len();
                             //if num_nodes - starting_num_nodes > self.node_limit {
@@ -1019,7 +1022,8 @@ impl MultiPatterns {
                                 // We don't want to apply multi-pattern rules on the same eclass
                                 continue;
                             }
-                            let n_applied = self.apply_match_pair(rule, match_1, match_2, map_1, map_2, runner);
+                            let n_applied =
+                                self.apply_match_pair(rule, match_1, match_2, map_1, map_2, runner);
                             //num_applied += n_applied;
                             //let num_nodes = runner.egraph.analysis.newly_added.len();
                             //if num_nodes - starting_num_nodes > self.node_limit {
@@ -1047,7 +1051,10 @@ impl MultiPatterns {
             } else {
                 self.node_limit - (ending_num_nodes - starting_num_nodes)
             };
-            println!("Number of nodes added: {}", ending_num_nodes - starting_num_nodes);
+            println!(
+                "Number of nodes added: {}",
+                ending_num_nodes - starting_num_nodes
+            );
 
             let time_taken = start_time.elapsed().as_secs();
             self.n_sec = if time_taken > self.n_sec {
@@ -1144,15 +1151,21 @@ impl MultiPatterns {
                         };
                         if cycle_check_passed {
                             // apply dst patterns, union
-                            let id_1 =
-                                rule.2
-                                    .apply_one(&mut runner.egraph, match_1.eclass, &merged_subst, None, "".into())
-                                    [0];
+                            let id_1 = rule.2.apply_one(
+                                &mut runner.egraph,
+                                match_1.eclass,
+                                &merged_subst,
+                                None,
+                                "".into(),
+                            )[0];
 
-                            let id_2 =
-                                rule.3
-                                    .apply_one(&mut runner.egraph, match_2.eclass, &merged_subst, None, "".into())
-                                    [0];
+                            let id_2 = rule.3.apply_one(
+                                &mut runner.egraph,
+                                match_2.eclass,
+                                &merged_subst,
+                                None,
+                                "".into(),
+                            )[0];
 
                             // Add the newly added nodes to the ordering list
                             if self.filter_after {

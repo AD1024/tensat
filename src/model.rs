@@ -200,11 +200,14 @@ impl Analysis<Mdl> for TensorAnalysis {
                 let t_bias = x(bias).meta;
                 let t_mean = x(mean).meta;
                 let t_var = x(var).meta;
-                let all_weights = x(input).all_weights && x(scale).all_weights && x(bias).all_weights && x(mean).all_weights && x(var).all_weights;
+                let all_weights = x(input).all_weights
+                    && x(scale).all_weights
+                    && x(bias).all_weights
+                    && x(mean).all_weights
+                    && x(var).all_weights;
 
                 // Create tensorhandle and get metadata
-                let res =
-                    unsafe { g.batchnorm(t_inpt, t_scale, t_bias, t_mean, t_var) };
+                let res = unsafe { g.batchnorm(t_inpt, t_scale, t_bias, t_mean, t_var) };
                 Self::Data {
                     dtype: DataKind::Tnsr,
                     val: 0,
@@ -213,7 +216,7 @@ impl Analysis<Mdl> for TensorAnalysis {
                     meta_2: std::ptr::null_mut(),
                     all_weights: all_weights,
                 }
-            },
+            }
             Mdl::Conv2d([stride_h, stride_w, pad, act, inpt, wght]) => {
                 // Check types
                 assert!(x(stride_h).dtype == DataKind::Scalar);
@@ -304,7 +307,7 @@ impl Analysis<Mdl> for TensorAnalysis {
                     all_weights: all_weights,
                 }
             }
- 
+
             Mdl::Relu(a) => {
                 assert!(x(a).dtype == DataKind::Tnsr);
                 let t_a = x(a).meta;
@@ -448,9 +451,8 @@ impl Analysis<Mdl> for TensorAnalysis {
                 let t_2 = x(input2).meta;
                 let t_3 = x(input3).meta;
                 let axis_val = x(axis).val;
-                let all_weights = x(input1).all_weights
-                    && x(input2).all_weights
-                    && x(input3).all_weights;
+                let all_weights =
+                    x(input1).all_weights && x(input2).all_weights && x(input3).all_weights;
 
                 // Create tensorhandle and get metadata
                 let t = [t_1, t_2, t_3];

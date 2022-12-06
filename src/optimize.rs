@@ -607,12 +607,19 @@ impl CostModel {
                     let t_mean = *_mean_data.meta;
                     let t_var = *_var_data.meta;
                     // Get op
-                    let op = (*g.model).get_or_create_batchnorm(t_inpt, t_scale, t_bias, t_mean, t_var);
+                    let op =
+                        (*g.model).get_or_create_batchnorm(t_inpt, t_scale, t_bias, t_mean, t_var);
                     assert!(op != Op_INVALID_OP);
                     (*op.ptr).runtime.clone()
                 };
 
-                if self.ignore_all_weight_only && x(_inpt).all_weights && x(_scale).all_weights && x(_bias).all_weights && x(_mean).all_weights && x(_var).all_weights {
+                if self.ignore_all_weight_only
+                    && x(_inpt).all_weights
+                    && x(_scale).all_weights
+                    && x(_bias).all_weights
+                    && x(_mean).all_weights
+                    && x(_var).all_weights
+                {
                     self.all_weight_discount * runtime
                 } else {
                     runtime
@@ -709,7 +716,7 @@ pub fn prep_ilp_data(
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SolvedResults {
     /// The solved values for the variables associated with each node
-    pub solved_x: Vec<i32>,
+    pub solved_x: Vec<f32>,
     /// The minimum total cost found
     pub cost: f32,
     /// Time for solver
@@ -744,6 +751,7 @@ pub fn construct_best_rec(
     match added_memo.get(&id) {
         Some(id_expr) => *id_expr,
         None => {
+            println!("Pick for eclass {}: {:?}", id, node_picked.get(&id));
             let node = node_picked.get(&id).unwrap().clone().map_children(|child| {
                 construct_best_rec(node_picked, child, added_memo, egraph, expr)
             });

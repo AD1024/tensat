@@ -149,7 +149,14 @@ impl GraphConverter {
         }
     }
 
-    pub fn batchnorm(&mut self, inpt: TensorInfo, scale: TensorInfo, bias: TensorInfo, mean: TensorInfo, var: TensorInfo) -> TensorInfo {
+    pub fn batchnorm(
+        &mut self,
+        inpt: TensorInfo,
+        scale: TensorInfo,
+        bias: TensorInfo,
+        mean: TensorInfo,
+        var: TensorInfo,
+    ) -> TensorInfo {
         let new_node = Mdl::BatchNorm([inpt.id, scale.id, bias.id, mean.id, var.id]);
         TensorInfo {
             id: self.rec_expr.add(new_node),
@@ -228,44 +235,25 @@ impl GraphConverter {
         let ndim_id = self.add_or_get_val(n_dim as i32);
 
         let new_node = match n_inputs {
-            2 => {
-                Mdl::Concat([
-                   axis_id,
-                   ndim_id,
-                   inputs[0].id,
-                   inputs[1].id,
-                ])
-            }
-            3 => {
-                Mdl::Concat3([
-                   axis_id,
-                   ndim_id,
-                   inputs[0].id,
-                   inputs[1].id,
-                   inputs[2].id,
-                ])
-            }
-            4 => {
-                Mdl::Concat4([
-                   axis_id,
-                   ndim_id,
-                   inputs[0].id,
-                   inputs[1].id,
-                   inputs[2].id,
-                   inputs[3].id,
-                ])
-            }
-            5 => {
-                Mdl::Concat5([
-                   axis_id,
-                   ndim_id,
-                   inputs[0].id,
-                   inputs[1].id,
-                   inputs[2].id,
-                   inputs[3].id,
-                   inputs[4].id,
-                ])
-            }
+            2 => Mdl::Concat([axis_id, ndim_id, inputs[0].id, inputs[1].id]),
+            3 => Mdl::Concat3([axis_id, ndim_id, inputs[0].id, inputs[1].id, inputs[2].id]),
+            4 => Mdl::Concat4([
+                axis_id,
+                ndim_id,
+                inputs[0].id,
+                inputs[1].id,
+                inputs[2].id,
+                inputs[3].id,
+            ]),
+            5 => Mdl::Concat5([
+                axis_id,
+                ndim_id,
+                inputs[0].id,
+                inputs[1].id,
+                inputs[2].id,
+                inputs[3].id,
+                inputs[4].id,
+            ]),
             _ => panic!("Number of input for concat not supported"),
         };
 

@@ -115,27 +115,62 @@ pub fn parse_model(rs_s: &str) -> GraphConverter {
                     nodes[&deps[1][0]][deps[1][1]],
                 )],
                 OpType_OP_EW_ADD => {
-vec![g.add(
-                    nodes[&deps[0][0]][deps[0][1]],
-                    nodes[&deps[1][0]][deps[1][1]],
-                )]},
+                    vec![g.add(
+                        nodes[&deps[0][0]][deps[0][1]],
+                        nodes[&deps[1][0]][deps[1][1]],
+                    )]
+                }
                 OpType_OP_RELU => vec![g.relu(nodes[&deps[0][0]][deps[0][1]])],
                 OpType_OP_DROPOUT => vec![g.dropout(nodes[&deps[0][0]][deps[0][1]])],
                 OpType_OP_RESHAPE => vec![g.reshape(nodes[&deps[0][0]][deps[0][1]], &params)],
                 OpType_OP_TRANSPOSE => {
-                    vec![g.transpose(nodes[&deps[0][0]][deps[0][1]], &params[1..1+(params[0] as usize)], params[params[0] as usize +1] != 0)]
-                },
-                OpType_OP_CONV2D => vec![g.conv2d(nodes[&deps[0][0]][deps[0][1]], nodes[&deps[1][0]][deps[1][1]], params[8], params[9], params[10], params[11])],
-                OpType_OP_POOL2D_AVG => vec![g.avgpool2d(nodes[&deps[0][0]][deps[0][1]], params[5], params[6], params[7], params[8], params[9])],
-                OpType_OP_POOL2D_MAX => vec![g.maxpool2d(nodes[&deps[0][0]][deps[0][1]], params[5], params[6], params[7], params[8], params[9])],
+                    vec![g.transpose(
+                        nodes[&deps[0][0]][deps[0][1]],
+                        &params[1..1 + (params[0] as usize)],
+                        params[params[0] as usize + 1] != 0,
+                    )]
+                }
+                OpType_OP_CONV2D => vec![g.conv2d(
+                    nodes[&deps[0][0]][deps[0][1]],
+                    nodes[&deps[1][0]][deps[1][1]],
+                    params[8],
+                    params[9],
+                    params[10],
+                    params[11],
+                )],
+                OpType_OP_POOL2D_AVG => vec![g.avgpool2d(
+                    nodes[&deps[0][0]][deps[0][1]],
+                    params[5],
+                    params[6],
+                    params[7],
+                    params[8],
+                    params[9],
+                )],
+                OpType_OP_POOL2D_MAX => vec![g.maxpool2d(
+                    nodes[&deps[0][0]][deps[0][1]],
+                    params[5],
+                    params[6],
+                    params[7],
+                    params[8],
+                    params[9],
+                )],
                 OpType_OP_CONCAT => {
-                    let inputs: Vec<TensorInfo> = deps.iter().map(|child| nodes[&child[0]][child[1]]).collect();
+                    let inputs: Vec<TensorInfo> = deps
+                        .iter()
+                        .map(|child| nodes[&child[0]][child[1]])
+                        .collect();
                     vec![g.concat_multi(params[0], &inputs)]
-                },
+                }
                 OpType_OP_SPLIT => todo!(), // reference 'Split' case in taso/examples/load_model.py
                 OpType_OP_BATCHNORM => {
- vec![g.batchnorm(nodes[&deps[0][0]][deps[0][1]], nodes[&deps[1][0]][deps[1][1]], nodes[&deps[2][0]][deps[2][1]], nodes[&deps[3][0]][deps[3][1]], nodes[&deps[4][0]][deps[4][1]])]
-                },
+                    vec![g.batchnorm(
+                        nodes[&deps[0][0]][deps[0][1]],
+                        nodes[&deps[1][0]][deps[1][1]],
+                        nodes[&deps[2][0]][deps[2][1]],
+                        nodes[&deps[3][0]][deps[3][1]],
+                        nodes[&deps[4][0]][deps[4][1]],
+                    )]
+                }
                 o => panic!("{} not yet implemented", o),
             };
             nodes.insert(guid, node);

@@ -6,6 +6,8 @@ use std::fs::*;
 use std::time::*;
 use std::time::{Duration, Instant};
 use tensat::bert;
+use tensat::inceptionv3;
+use tensat::mobilenetv2;
 use tensat::model::*;
 use tensat::nasneta;
 use tensat::nasrnn;
@@ -13,10 +15,8 @@ use tensat::optimize::*;
 use tensat::resnet50;
 use tensat::resnext50;
 use tensat::rewrites::*;
-use tensat::inceptionv3;
-use tensat::mobilenetv2;
-use tensat::vgg;
 use tensat::squeezenet;
+use tensat::vgg;
 use tensat::{parse::*, verify::*};
 
 use serde::{Deserialize, Serialize};
@@ -291,13 +291,27 @@ fn optimize(matches: clap::ArgMatches) {
             .map(|x| (x, /*symmetric=*/ true))
             .chain(pre_defined_multi)
             .collect();
-        MultiPatterns::with_rules(multi_rules, no_cycle, iter_multi, filter_after, node_multi, n_sec)
+        MultiPatterns::with_rules(
+            multi_rules,
+            no_cycle,
+            iter_multi,
+            filter_after,
+            node_multi,
+            n_sec,
+        )
     } else {
         let multi_rules: Vec<(&str, bool)> = PRE_DEFINED_MULTI
             .iter()
             .map(|&x| (x, /*symmetric=*/ false))
             .collect();
-        MultiPatterns::with_rules(multi_rules, no_cycle, iter_multi, filter_after, node_multi, n_sec)
+        MultiPatterns::with_rules(
+            multi_rules,
+            no_cycle,
+            iter_multi,
+            filter_after,
+            node_multi,
+            n_sec,
+        )
     };
 
     // Run saturation
@@ -378,7 +392,8 @@ fn optimize(matches: clap::ArgMatches) {
                 "programs": num_programs,
                 "iter": num_iter_sat,
             });
-            let sol_data_str = serde_json::to_string(&data).expect("Fail to convert json to string");
+            let sol_data_str =
+                serde_json::to_string(&data).expect("Fail to convert json to string");
 
             if let Err(e) = writeln!(file, "{}", sol_data_str) {
                 eprintln!("Couldn't write to file: {}", e);
@@ -391,8 +406,9 @@ fn optimize(matches: clap::ArgMatches) {
             /*ignore_all_weight_only=*/ matches.is_present("all_weight_only"),
         );
         let (best, ext_secs) = match extract_mode {
-            "ilp" => extract_by_ilp(&egraph, root, &matches, &cost_model),
+            "ilp" => extract_by_ilp(&egraph, root, &matches, &cost_model, false),
             "lp" => fractional_extract(&egraph, root, &cost_model),
+            // "lp" => extract_by_ilp(&egraph, root, &matches, &cost_model, true),
             "greedy" => {
                 let tnsr_cost = TensorCost {
                     egraph: &egraph,
@@ -431,11 +447,11 @@ fn optimize(matches: clap::ArgMatches) {
         println!("Extracted graph runtime: {}", time_ext);
 
         if let Some(exportf) = matches.value_of("export_model") {
-            save_model(&runner_start, &(exportf.to_owned()+"_start.model"));
+            save_model(&runner_start, &(exportf.to_owned() + "_start.model"));
         }
 
         if let Some(exportf) = matches.value_of("export_model") {
-            save_model(&runner_ext, &(exportf.to_owned()+"_optimized.model"));
+            save_model(&runner_ext, &(exportf.to_owned() + "_optimized.model"));
         }
 
         if let Some(outf) = matches.value_of("out_file") {
@@ -457,7 +473,8 @@ fn optimize(matches: clap::ArgMatches) {
                 "programs": num_programs,
                 "iter": num_iter_sat,
             });
-            let sol_data_str = serde_json::to_string(&data).expect("Fail to convert json to string");
+            let sol_data_str =
+                serde_json::to_string(&data).expect("Fail to convert json to string");
 
             if let Err(e) = writeln!(file, "{}", sol_data_str) {
                 eprintln!("Couldn't write to file: {}", e);
@@ -466,16 +483,18 @@ fn optimize(matches: clap::ArgMatches) {
     }
 }
 
-fn fractional_extract(egraph: &EGraph<Mdl, TensorAnalysis>, root: Id, cost_model: &CostModel) -> (RecExpr<Mdl>, f32) {
-    let tensor_cost = TensorCost {
-        egraph,
-        cost_model
-    };
-    let mut lp_extractor = LpExtractor::new(egraph, tensor_cost, true);
+fn fractional_extract(
+    egraph: &EGraph<Mdl, TensorAnalysis>,
+    root: Id,
+    cost_model: &CostModel,
+) -> (RecExpr<Mdl>, f32) {
+    let tensor_cost = TensorCost { egraph, cost_model };
+    let env = rplex::Env::new().unwrap();
+    let mut lp_extractor = FractionalExtractor::new(egraph, &env, tensor_cost, true, false);
     let start_time = Instant::now();
     let best = lp_extractor.solve(root);
     let solve_time = start_time.elapsed().as_millis();
-    // println!("{:?}", best);
+    println!("{:?}", best);
     println!("Solve time: {}", solve_time);
     (best, solve_time as f32)
 }
@@ -490,6 +509,7 @@ fn extract_by_ilp(
     root: Id,
     matches: &clap::ArgMatches,
     cost_model: &CostModel,
+    fractional: bool,
 ) -> (RecExpr<Mdl>, f32) {
     // Prepare data for ILP formulation, save to json
     let (m_id_map, e_m, h_i, cost_i, g_i, root_m, i_to_nodes, blacklist_i) =
@@ -504,7 +524,7 @@ fn extract_by_ilp(
         "blacklist_i": blacklist_i,
     });
     let data_str = serde_json::to_string(&data).expect("Fail to convert json to string");
-    create_dir_all("./tmp");
+    create_dir_all("./tmp").unwrap();
     write("./tmp/ilp_data.json", data_str).expect("Unable to write file");
 
     let initialize = matches.is_present("initial_with_greedy");
@@ -538,6 +558,11 @@ fn extract_by_ilp(
     let class_constraint = matches.is_present("class_constraint");
     let no_order = matches.is_present("no_order");
     let mut arg_vec = vec!["extractor/extract.py"];
+    // if fractional {
+    //     arg_vec.push("--fractional");
+    //     // arg_vec.push("--eclass_constraint");
+    //     // arg_vec.push("--order_var_int");
+    // }
     if order_var_int {
         arg_vec.push("--order_var_int");
     }
@@ -573,7 +598,11 @@ fn extract_by_ilp(
 
         let mut node_picked: HashMap<Id, Mdl> = HashMap::new();
         for (i, x_i) in solved_data.solved_x.iter().enumerate() {
-            if *x_i == 1 {
+            if m_id_map[g_i[i]] == root {
+                println!("Node in root: {} with value {}", i_to_nodes[i], x_i);
+            }
+            if *x_i > 0.0 {
+                // println!("Picked: {} in eclass: {} of value {}", i_to_nodes[i].to_string(), m_id_map[g_i[i]], *x_i);
                 let eclass_id = m_id_map[g_i[i]];
                 if node_picked.contains_key(&eclass_id) {
                     println!("Duplicate node in eclass");
@@ -583,12 +612,15 @@ fn extract_by_ilp(
                 }
                 //assert!(!node_picked.contains_key(&eclass_id));
                 node_picked.insert(eclass_id, i_to_nodes[i].clone());
+            } else {
+                // println!("Node not picked: {} in eclass: {} of value {}", i_to_nodes[i].to_string(), m_id_map[g_i[i]], *x_i);
             }
         }
 
         let mut expr = RecExpr::default();
         let mut added_memo: HashMap<Id, Id> = Default::default();
         let _ = construct_best_rec(&node_picked, root, &mut added_memo, egraph, &mut expr);
+        panic!("Debug");
         (expr, solved_data.time)
     } else {
         panic!("Python script failed");
