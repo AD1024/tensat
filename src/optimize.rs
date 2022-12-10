@@ -14,6 +14,23 @@ pub struct TensorCost<'a> {
     pub cost_model: &'a CostModel,
 }
 
+pub struct LpTensorCost {
+    pub node_costs: HashMap<(Id, Mdl), f64>,
+    pub blacklist: HashSet<(Id, Mdl)>,
+}
+
+impl LpCostFunction<Mdl, TensorAnalysis> for LpTensorCost {
+    fn node_cost(&mut self, _egraph: &EGraph<Mdl, TensorAnalysis>, eclass: Id, enode: &Mdl) -> f64 {
+        if self.blacklist.contains(&(eclass, enode.clone())) {
+            return 0.0;
+        }
+        self.node_costs
+            .get(&(eclass, enode.clone()))
+            .cloned()
+            .unwrap()
+    }
+}
+
 impl LpCostFunction<Mdl, TensorAnalysis> for TensorCost<'_> {
     fn node_cost(&mut self, _egraph: &EGraph<Mdl, TensorAnalysis>, eclass: Id, enode: &Mdl) -> f64 {
         self.cost_model.get_self_cost(self.egraph, enode).into()

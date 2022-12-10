@@ -488,9 +488,36 @@ fn fractional_extract(
     root: Id,
     cost_model: &CostModel,
 ) -> (RecExpr<Mdl>, f32) {
-    let tensor_cost = TensorCost { egraph, cost_model };
+    let (m_id_map, e_m, _, cost_i, _, _, i_to_nodes, blacklist_i) =
+        prep_ilp_data(egraph, root, cost_model);
+    let mut node_costs: HashMap<(Id, Mdl), f64> = HashMap::default();
+    let mut blacklist: HashSet<(Id, Mdl)> = HashSet::default();
+    let blacklist_set = blacklist_i
+        .iter()
+        .map(|x| x.to_owned())
+        .collect::<HashSet<_>>();
+    for (m, class) in m_id_map.iter().enumerate() {
+        for node in e_m[m].iter() {
+            let real_node = &i_to_nodes[*node];
+            node_costs.insert((*class, real_node.clone()), cost_i[*node] as f64);
+            if blacklist_set.contains(node) {
+                blacklist.insert((*class, real_node.clone()));
+            }
+        }
+    }
+    let tensor_cost = LpTensorCost {
+        node_costs,
+        blacklist: blacklist.clone(),
+    };
     let env = rplex::Env::new().unwrap();
-    let mut lp_extractor = FractionalExtractor::new(egraph, &env, tensor_cost, true, false);
+    let mut lp_extractor = FractionalExtractor::new(
+        egraph,
+        &env,
+        tensor_cost,
+        |id, node| blacklist.contains(&(id, node)),
+        false,
+        false,
+    );
     let start_time = Instant::now();
     let best = lp_extractor.solve(root);
     let solve_time = start_time.elapsed().as_millis();
@@ -620,7 +647,6 @@ fn extract_by_ilp(
         let mut expr = RecExpr::default();
         let mut added_memo: HashMap<Id, Id> = Default::default();
         let _ = construct_best_rec(&node_picked, root, &mut added_memo, egraph, &mut expr);
-        panic!("Debug");
         (expr, solved_data.time)
     } else {
         panic!("Python script failed");
