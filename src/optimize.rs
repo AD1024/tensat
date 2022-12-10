@@ -14,6 +14,7 @@ pub struct TensorCost<'a> {
     pub cost_model: &'a CostModel,
 }
 
+#[derive(Clone)]
 pub struct LpTensorCost {
     pub node_costs: HashMap<(Id, Mdl), f64>,
     pub blacklist: HashSet<(Id, Mdl)>,
@@ -27,7 +28,7 @@ impl LpCostFunction<Mdl, TensorAnalysis> for LpTensorCost {
         self.node_costs
             .get(&(eclass, enode.clone()))
             .cloned()
-            .unwrap()
+            .unwrap_or(0.0)
     }
 }
 

@@ -407,7 +407,8 @@ fn optimize(matches: clap::ArgMatches) {
         );
         let (best, ext_secs) = match extract_mode {
             "ilp" => extract_by_ilp(&egraph, root, &matches, &cost_model, false),
-            "lp" => fractional_extract(&egraph, root, &cost_model),
+            "cplex" => fractional_extract(&egraph, root, &start, &cost_model, true),
+            "lp" => fractional_extract(&egraph, root, &start, &cost_model, false),
             // "lp" => extract_by_ilp(&egraph, root, &matches, &cost_model, true),
             "greedy" => {
                 let tnsr_cost = TensorCost {
@@ -439,6 +440,8 @@ fn optimize(matches: clap::ArgMatches) {
                 .unwrap();
             runner_ext.egraph.dot().to_svg("target/ext.svg").unwrap();
         }
+
+        return;
 
         let time_start = get_full_graph_runtime(&runner_start, false);
         println!("Start graph runtime: {}", time_start);
@@ -486,7 +489,9 @@ fn optimize(matches: clap::ArgMatches) {
 fn fractional_extract(
     egraph: &EGraph<Mdl, TensorAnalysis>,
     root: Id,
+    start: &RecExpr<Mdl>,
     cost_model: &CostModel,
+    fallback: bool,
 ) -> (RecExpr<Mdl>, f32) {
     let (m_id_map, e_m, _, cost_i, _, _, i_to_nodes, blacklist_i) =
         prep_ilp_data(egraph, root, cost_model);
@@ -509,19 +514,38 @@ fn fractional_extract(
         node_costs,
         blacklist: blacklist.clone(),
     };
+    // let tensor_cost = TensorCost {
+    //     egraph,
+    //     cost_model,
+    // };
+    // Cost of original graph
+    let runner = Runner::default().with_expr(start);
+    let new_egraph: EGraph<Mdl, TensorAnalysis> = runner.egraph;
+    let new_root = runner.roots[0];
+    let env = rplex::Env::new().unwrap();
+    let mut lp_extractor = FractionalExtractor::new(
+        &new_egraph,
+        &env,
+        tensor_cost.clone(),
+        |id, node| blacklist.contains(&(id, node)),
+        fallback,
+        fallback,
+    );
+    let _ = lp_extractor.solve(new_root);
+
     let env = rplex::Env::new().unwrap();
     let mut lp_extractor = FractionalExtractor::new(
         egraph,
         &env,
         tensor_cost,
         |id, node| blacklist.contains(&(id, node)),
-        false,
-        false,
+        fallback,
+        fallback,
     );
     let start_time = Instant::now();
     let best = lp_extractor.solve(root);
     let solve_time = start_time.elapsed().as_millis();
-    println!("{:?}", best);
+    // println!("{:?}", best);
     println!("Solve time: {}", solve_time);
     (best, solve_time as f32)
 }
