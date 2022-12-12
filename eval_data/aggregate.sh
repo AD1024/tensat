@@ -1,0 +1,2 @@
+#!/bin/bash
+python3 render_graph.py --mode aggregate --models bert nasrnn resnext50 inceptionv3 vgg --datasets bert_stats.txt nasrnn_stats.txt resnext50_stats.txt inceptionv3_stats.txt vgg_stats.txt --dst_file aggregated.json
