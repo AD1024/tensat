@@ -405,10 +405,16 @@ fn optimize(matches: clap::ArgMatches) {
         let cost_model = CostModel::with_setting(
             /*ignore_all_weight_only=*/ matches.is_present("all_weight_only"),
         );
+        println!("Extracting with CPLEX ILP");
+        fractional_extract(&egraph, root, &start, &cost_model, true, matches.value_of("out_file").unwrap(), num_iter_sat);
+        println!("Extracting with LP");
+        fractional_extract(&egraph, root, &start, &cost_model, false, matches.value_of("out_file").unwrap(), num_iter_sat);
+        // only compare costs
+        return;
         let (best, ext_secs) = match extract_mode {
             "ilp" => extract_by_ilp(&egraph, root, &matches, &cost_model, false),
-            "cplex" => fractional_extract(&egraph, root, &start, &cost_model, true),
-            "lp" => fractional_extract(&egraph, root, &start, &cost_model, false),
+            "cplex" => fractional_extract(&egraph, root, &start, &cost_model, true, matches.value_of("out_file").unwrap(), num_iter_sat),
+            "lp" => fractional_extract(&egraph, root, &start, &cost_model, false, matches.value_of("out_file").unwrap(), num_iter_sat),
             // "lp" => extract_by_ilp(&egraph, root, &matches, &cost_model, true),
             "greedy" => {
                 let tnsr_cost = TensorCost {
@@ -440,8 +446,6 @@ fn optimize(matches: clap::ArgMatches) {
                 .unwrap();
             runner_ext.egraph.dot().to_svg("target/ext.svg").unwrap();
         }
-
-        return;
 
         let time_start = get_full_graph_runtime(&runner_start, false);
         println!("Start graph runtime: {}", time_start);
@@ -486,12 +490,14 @@ fn optimize(matches: clap::ArgMatches) {
     }
 }
 
-fn fractional_extract(
+fn fractional_extract<'a>(
     egraph: &EGraph<Mdl, TensorAnalysis>,
     root: Id,
     start: &RecExpr<Mdl>,
     cost_model: &CostModel,
     fallback: bool,
+    outf: &'a str,
+    num_iter: usize,
 ) -> (RecExpr<Mdl>, f32) {
     let (m_id_map, e_m, _, cost_i, _, _, i_to_nodes, blacklist_i) =
         prep_ilp_data(egraph, root, cost_model);
@@ -523,7 +529,7 @@ fn fractional_extract(
     let new_egraph: EGraph<Mdl, TensorAnalysis> = runner.egraph;
     let new_root = runner.roots[0];
     let env = rplex::Env::new().unwrap();
-    let mut lp_extractor = FractionalExtractor::new(
+    let mut original_extractor = FractionalExtractor::new(
         &new_egraph,
         &env,
         tensor_cost.clone(),
@@ -531,7 +537,7 @@ fn fractional_extract(
         fallback,
         fallback,
     );
-    let _ = lp_extractor.solve(new_root);
+    let _ = original_extractor.solve(new_root);
 
     let env = rplex::Env::new().unwrap();
     let mut lp_extractor = FractionalExtractor::new(
@@ -547,6 +553,29 @@ fn fractional_extract(
     let solve_time = start_time.elapsed().as_millis();
     // println!("{:?}", best);
     println!("Solve time: {}", solve_time);
+    let mut file = OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open(outf)
+        .unwrap();
+    let (num_enodes, num_classes, avg_nodes_per_class, num_edges, num_programs) =
+        get_stats(egraph);
+    let data = json!({
+        "algorithm": if fallback { "ilp" } else { "lp" },
+        "solve_time": solve_time as u64,
+        "num_nodes": num_enodes,
+        "num_classes": num_classes,
+        "num_programs": num_programs,
+        "num_iter": num_iter,
+        "avg_nodes_per_class": avg_nodes_per_class,
+        "num_edges": num_edges,
+        "obj_start": original_extractor.solved_objective,
+        "obj_opt": lp_extractor.solved_objective,
+        "obj_ext": lp_extractor.rounded_objective,
+    });
+    if let Err(e) = writeln!(file, "{}", serde_json::to_string(&data).unwrap()) {
+        eprintln!("Couldn't write to file: {}", e);
+    }
     (best, solve_time as f32)
 }
 
